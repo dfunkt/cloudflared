@@ -1,23 +1,23 @@
+# importing xx for cross-compilation
+FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 # use a builder image for building cloudflare
-ARG TARGET_GOOS
-ARG TARGET_GOARCH
-FROM golang:1.24.9 AS builder
-ENV GO111MODULE=on \
-  CGO_ENABLED=0 \
-  TARGET_GOOS=${TARGET_GOOS} \
-  TARGET_GOARCH=${TARGET_GOARCH} \
+FROM --platform=$BUILDPLATFORM golang:1.24.9 AS builder
+COPY --from=xx / /
+ENV CGO_ENABLED=0 \
   # the CONTAINER_BUILD envvar is used set github.com/cloudflare/cloudflared/metrics.Runtime=virtual
   # which changes how cloudflared binds the metrics server
   CONTAINER_BUILD=1
-
 
 WORKDIR /go/src/github.com/cloudflare/cloudflared/
 
 # copy our sources into the builder image
 COPY . .
 
+ARG TARGETOS
+ARG TARGETARCH
+
 # compile cloudflared
-RUN make cloudflared
+RUN GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
 
 # use scratch as base
 FROM scratch
@@ -25,10 +25,10 @@ FROM scratch
 LABEL org.opencontainers.image.source="https://github.com/cloudflare/cloudflared"
 
 # copy SSL certs
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder --link /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # copy our compiled binary
-COPY --from=builder --chown=65532:65532 /go/src/github.com/cloudflare/cloudflared/cloudflared /usr/local/bin/
+COPY --from=builder --link /go/src/github.com/cloudflare/cloudflared/cloudflared /usr/local/bin/
 
 # run as nonroot user
 # We need to use numeric user id's because Kubernetes doesn't support strings:

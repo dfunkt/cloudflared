@@ -1,23 +1,24 @@
+# importing xx for cross-compilation
+FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 # use a builder image for building cloudflare
-ARG TARGET_GOOS
-ARG TARGET_GOARCH
-FROM golang:1.24.4 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24.4 AS builder
+COPY --from=xx / /
 ENV GO111MODULE=on \
   CGO_ENABLED=0 \
-  TARGET_GOOS=${TARGET_GOOS} \
-  TARGET_GOARCH=${TARGET_GOARCH} \
   # the CONTAINER_BUILD envvar is used set github.com/cloudflare/cloudflared/metrics.Runtime=virtual
   # which changes how cloudflared binds the metrics server
   CONTAINER_BUILD=1
-
 
 WORKDIR /go/src/github.com/cloudflare/cloudflared/
 
 # copy our sources into the builder image
 COPY . .
 
+ARG TARGETOS
+ARG TARGETARCH
+
 # compile cloudflared
-RUN make cloudflared
+RUN GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
 
 # use scratch as base
 FROM scratch

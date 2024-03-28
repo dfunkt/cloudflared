@@ -23,13 +23,16 @@ COPY . .
 # compile cloudflared
 RUN make cloudflared
 
-# use a distroless base image with glibc
-FROM gcr.io/distroless/base-debian13:nonroot@sha256:0896741ba5bafd3ac87ea025a5f578952f2d238ddc3614cb368acc983a687aa2
+# use scratch as base
+FROM scratch
 
 LABEL org.opencontainers.image.source="https://github.com/cloudflare/cloudflared"
 
+# copy SSL certs
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 # copy our compiled binary
-COPY --from=builder --chown=nonroot /go/src/github.com/cloudflare/cloudflared/cloudflared /usr/local/bin/
+COPY --from=builder --chown=65532:65532 /go/src/github.com/cloudflare/cloudflared/cloudflared /usr/local/bin/
 
 # run as nonroot user
 # We need to use numeric user id's because Kubernetes doesn't support strings:

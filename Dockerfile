@@ -21,16 +21,19 @@ RUN .teamcity/install-cloudflare-go.sh
 # compile cloudflared
 RUN PATH="/tmp/go/bin:$PATH" make cloudflared
 
-# use a distroless base image with glibc
-FROM gcr.io/distroless/base-debian12:nonroot
+# use scratch as base
+FROM scratch
 
 LABEL org.opencontainers.image.source="https://github.com/cloudflare/cloudflared"
 
+# copy SSL certs
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 # copy our compiled binary
-COPY --from=builder --chown=nonroot /go/src/github.com/cloudflare/cloudflared/cloudflared /usr/local/bin/
+COPY --from=builder --chown=65532:65532 /go/src/github.com/cloudflare/cloudflared/cloudflared /usr/local/bin/
 
 # run as non-privileged user
-USER nonroot
+USER 65532:65532
 
 # command / entrypoint of container
 ENTRYPOINT ["cloudflared", "--no-autoupdate"]

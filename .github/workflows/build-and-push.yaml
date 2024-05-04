@@ -51,15 +51,10 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          sbom: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Extract SBOM info
-        run: |
-          docker buildx imagetools inspect ${{ steps.meta.outputs.tags }} --format '{{ json (index .SBOM "linux/amd64").SPDX }}' > sbom.spdx.json
 
       - name: Generate build provenance attestation
         uses: actions/attest-build-provenance@v1
@@ -67,6 +62,13 @@ jobs:
           subject-name: ${{ env.GHCR_CONTAINER_PATH }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: 'spdx-json'
+          output-file: 'sbom.spdx.json'
+          upload-artifact: false
 
       - name: Generate SBOM attestation
         uses: actions/attest-sbom@v1

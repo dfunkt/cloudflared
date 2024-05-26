@@ -78,8 +78,8 @@ func ServeMetrics(
 	// profile CPU usage depends on WriteTimeout
 	h := newMetricsHandler(config, log)
 	server := &http.Server{
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  65 * time.Second,
+		WriteTimeout: 65 * time.Second,
 		Handler:      h,
 	}
 

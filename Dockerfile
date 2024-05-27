@@ -16,10 +16,16 @@ COPY . .
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG TARGETVARIANT
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # installing make for cross-compilation
 # compile cloudflared
-RUN PATH="/tmp/go/bin:$PATH" GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
+RUN if [[ "${TARGETARCH}${TARGETVARIANT}" == amd64v* ]]; then \
+      export GOAMD64="${TARGETVARIANT}"; \
+    fi && \
+    PATH="/tmp/go/bin:$PATH" GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
 
 # use scratch as base
 FROM scratch

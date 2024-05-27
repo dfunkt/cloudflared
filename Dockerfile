@@ -16,9 +16,16 @@ COPY . .
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG TARGETVARIANT
 
-# compile cloudflared
-RUN GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Set the x86-64 microarchitecture level (if present)
+RUN if [[ "${TARGETARCH}${TARGETVARIANT}" == amd64v* ]]; then \
+      export GOAMD64="${TARGETVARIANT}"; \
+    fi && \
+    # compile cloudflared
+    GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
 
 # use scratch as base
 FROM scratch

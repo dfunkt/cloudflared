@@ -18,6 +18,13 @@ jobs:
       id-token: write
       attestations: write
 
+    env:
+      PLATFORMS: "['linux/amd64', 'linux/amd64/v3', 'linux/arm64']"
+
+    outputs:
+      platforms: ${{ steps.extract-binaries.outputs.PLTF }}
+      source-version: ${{ steps.extract-binaries.outputs.SOURCE_VERSION }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,17 +51,38 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Configure build platforms
+        shell: bash
+        run: |
+          PLATFORMS=$(echo "${{ env.PLATFORMS }}" | tr -d "[' ]")
+          echo "BUILD_PLATFORMS=$PLATFORMS" | tee -a "${GITHUB_ENV}"
+
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/amd64/v3,linux/arm64
+          platforms: ${{ env.BUILD_PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=local,dest=/tmp/cloudflared
+
+      - name: Check for extracted binaries
+        id: extract-binaries
+        run: |
+          PLATFORMS=$(echo "${{ env.PLATFORMS }}" | tr '/' '_')
+          echo "PLTF=$PLATFORMS" | tee -a "$GITHUB_OUTPUT"
+
+          echo "SOURCE_VERSION=$(git rev-parse --short HEAD)" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Binary cache between jobs
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/cloudflared/
+          key: cloudflared-binaries-${{ steps.extract-binaries.outputs.SOURCE_VERSION }}
 
       - name: Generate build provenance attestation
         uses: actions/attest-build-provenance@v1
@@ -77,3 +105,23 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           sbom-path: 'sbom.spdx.json'
           push-to-registry: true
+
+  upload-binaries:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    strategy:
+      matrix:
+        platforms: ${{ fromJSON(needs.build-and-push.outputs.platforms) }}
+
+    steps:
+      - name: Binary cache between jobs
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/cloudflared/
+          key: cloudflared-binaries-${{ needs.build-and-push.outputs.source-version }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflared-${{ needs.build-and-push.outputs.source-version }}-${{ matrix.platforms }}
+          path: /tmp/cloudflared/${{ matrix.platforms }}/usr/local/bin/

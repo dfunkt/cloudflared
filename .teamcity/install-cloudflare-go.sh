@@ -1,8 +1,8 @@
 # !/usr/bin/env bash
 
 cd /tmp
-git clone -q https://github.com/cloudflare/go
+git clone -q https://github.com/dfunkt/go
 cd go/src
-# https://github.com/cloudflare/go/tree/048a67333ee3148de8334b397deb5901000339bb is version go1.22.3-devel-cf
-git checkout -q 048a67333ee3148de8334b397deb5901000339bb
+# https://github.com/dfunkt/go/commit/b6fd0f9d1ea8e4a5ae2ca42c402e326f0940d7f6 is version go1.22.4-devel-cf
+git checkout -q b6fd0f9d1ea8e4a5ae2ca42c402e326f0940d7f6
 ./make.bash

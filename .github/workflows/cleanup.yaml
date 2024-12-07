@@ -1,0 +1,29 @@
+name: Cleanup
+permissions: {}
+
+on:
+  workflow_dispatch:
+    inputs:
+      manual_trigger:
+        description: "Manual trigger for package cleanup"
+        required: false
+        default: ""
+
+  schedule:
+    - cron: '0 1 * * FRI'
+
+jobs:
+  release-cleanup:
+    name: Package Cleanup
+    permissions:
+      packages: write # To be able to cleanup old package old package versions
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - name: Delete old cloudflared packages
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: 'cloudflared'
+          package-type: 'container'
+          min-versions-to-keep: 5

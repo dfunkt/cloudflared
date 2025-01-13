@@ -15,6 +15,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
 
     env:
       PLATFORMS: "['linux/amd64', 'linux/amd64/v3', 'linux/arm64']"
@@ -56,6 +58,7 @@ jobs:
           echo "BUILD_PLATFORMS=$PLATFORMS" | tee -a "${GITHUB_ENV}"
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -65,21 +68,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=local,dest=/tmp/cloudflared
+          outputs: type=local,dest=/tmp/${{ github.event.repository.name }}
+
+      - name: Attest container image
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       - name: Check for extracted binaries
         id: extract-binaries
         run: |
+          for dir in /tmp/${{ github.event.repository.name }}/*/usr/local/bin/; do
+            dirname="$(dirname $dir | awk -F "/" '{print $4}')"
+            mv "${dir}${{ github.event.repository.name }}" "${dir}${{ github.event.repository.name }}-${dirname}"
+          done
+
           PLATFORMS=$(echo "${{ env.PLATFORMS }}" | tr '/' '_')
           echo "PLTF=$PLATFORMS" | tee -a "$GITHUB_OUTPUT"
 
           echo "SOURCE_VERSION=$(git rev-parse --short HEAD)" | tee -a "${GITHUB_OUTPUT}"
 
+      - name: Attest artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: /tmp/${{ github.event.repository.name }}/*/usr/local/bin/
+
       - name: Binary cache between jobs
         uses: actions/cache/save@v4
         with:
-          path: /tmp/cloudflared/
-          key: cloudflared-binaries-${{ steps.extract-binaries.outputs.SOURCE_VERSION }}
+          path: /tmp/${{ github.event.repository.name }}
+          key: ${{ github.event.repository.name }}-binaries-${{ steps.extract-binaries.outputs.SOURCE_VERSION }}
 
   upload-binaries:
     runs-on: ubuntu-latest
@@ -92,11 +112,11 @@ jobs:
       - name: Binary cache between jobs
         uses: actions/cache/restore@v4
         with:
-          path: /tmp/cloudflared/
-          key: cloudflared-binaries-${{ needs.build-and-push.outputs.source-version }}
+          path: /tmp/${{ github.event.repository.name }}
+          key: ${{ github.event.repository.name }}-binaries-${{ needs.build-and-push.outputs.source-version }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cloudflared-${{ needs.build-and-push.outputs.source-version }}-${{ matrix.platforms }}
-          path: /tmp/cloudflared/${{ matrix.platforms }}/usr/local/bin/
+          name: ${{ github.event.repository.name }}-${{ needs.build-and-push.outputs.source-version }}-${{ matrix.platforms }}
+          path: /tmp/${{ github.event.repository.name }}/${{ matrix.platforms }}/usr/local/bin/

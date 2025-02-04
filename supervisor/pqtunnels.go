@@ -12,13 +12,13 @@ const (
 	X25519Kyber768Draft00PQKexName = "X25519Kyber768Draft00"
 	P256Kyber768Draft00PQKex       = tls.CurveID(0xfe32) // P256Kyber768Draft00
 	P256Kyber768Draft00PQKexName   = "P256Kyber768Draft00"
-	X25519MLKEM768PQKex            = tls.CurveID(0x11ec) // X25519MLKEM768
+	X25519MLKEM768PQKex            = tls.CurveID(4588) // X25519MLKEM768
 	X25519MLKEM768PQKexName        = "X25519MLKEM768"
 )
 
 var (
-	nonFipsPostQuantumStrictPKex []tls.CurveID = []tls.CurveID{X25519MLKEM768PQKex, X25519Kyber768Draft00PQKex}
-	nonFipsPostQuantumPreferPKex []tls.CurveID = []tls.CurveID{X25519MLKEM768PQKex, X25519Kyber768Draft00PQKex}
+	nonFipsPostQuantumStrictPKex []tls.CurveID = []tls.CurveID{X25519MLKEM768PQKex}
+	nonFipsPostQuantumPreferPKex []tls.CurveID = []tls.CurveID{X25519MLKEM768PQKex}
 	fipsPostQuantumStrictPKex    []tls.CurveID = []tls.CurveID{P256Kyber768Draft00PQKex}
 	fipsPostQuantumPreferPKex    []tls.CurveID = []tls.CurveID{P256Kyber768Draft00PQKex, tls.CurveP256}
 )

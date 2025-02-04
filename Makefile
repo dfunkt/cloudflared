@@ -6,16 +6,7 @@ MSI_VERSION   := $(shell git tag -l --sort=v:refname | grep "w" | tail -1 | cut 
 #MSI_VERSION expects the format of the tag to be: (wX.X.X). Starts with the w character to not break cfsetup.
 #e.g. w3.0.1 or w4.2.10. It trims off the w character when creating the MSI.
 
-ifeq ($(ORIGINAL_NAME), true)
-	# Used for builds that want FIPS compilation but want the artifacts generated to still have the original name.
-	BINARY_NAME := cloudflared
-else ifeq ($(FIPS), true)
-	# Used for FIPS compliant builds that do not match the case above.
-	BINARY_NAME := cloudflared-fips
-else
-	# Used for all other (non-FIPS) builds.
-	BINARY_NAME := cloudflared
-endif
+BINARY_NAME := cloudflared
 
 ifeq ($(NIGHTLY), true)
 	DEB_PACKAGE_NAME := $(BINARY_NAME)-nightly
@@ -35,12 +26,6 @@ ifdef CONTAINER_BUILD
 endif
 
 LINK_FLAGS :=
-ifeq ($(FIPS), true)
-	LINK_FLAGS := -linkmode=external -extldflags=-static $(LINK_FLAGS)
-	# Prevent linking with libc regardless of CGO enabled or not.
-	GO_BUILD_TAGS := $(GO_BUILD_TAGS) osusergo netgo fips
-	VERSION_FLAGS := $(VERSION_FLAGS) -X "main.BuildType=FIPS"
-endif
 
 LDFLAGS := -ldflags='$(VERSION_FLAGS) $(LINK_FLAGS)'
 ifneq ($(GO_BUILD_TAGS),)
@@ -131,13 +116,7 @@ clean:
 
 .PHONY: cloudflared
 cloudflared:
-ifeq ($(FIPS), true)
-	$(info Building cloudflared with go-fips)
-endif
 	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) $(ARM_COMMAND) go build -mod=vendor $(GO_BUILD_TAGS) $(LDFLAGS) $(IMPORT_PATH)/cmd/cloudflared
-ifeq ($(FIPS), true)
-	./check-fips.sh cloudflared
-endif
 
 .PHONY: container
 container:

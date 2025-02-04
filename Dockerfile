@@ -1,7 +1,7 @@
 # importing xx for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 # use a builder image for building cloudflare
-FROM --platform=$BUILDPLATFORM golang:1.22.10 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24.0 AS builder
 COPY --from=xx / /
 ENV GO111MODULE=on \
   CGO_ENABLED=0 \
@@ -10,10 +10,6 @@ ENV GO111MODULE=on \
   CONTAINER_BUILD=1
 
 WORKDIR /go/src/github.com/cloudflare/cloudflared/
-
-# build cloudflare go only for build platform
-COPY .teamcity/install-cloudflare-go.sh .
-RUN ./install-cloudflare-go.sh
 
 # copy our sources into the builder image
 COPY . .

@@ -17,14 +17,14 @@ type spanRecorder struct {
 func (r *spanRecorder) record(s *Span) {
 	maxSpans := defaultMaxSpans
 	if client := CurrentHub().Client(); client != nil {
-		maxSpans = client.Options().MaxSpans
+		maxSpans = client.options.MaxSpans
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.spans) >= maxSpans {
 		r.overflowOnce.Do(func() {
 			root := r.spans[0]
-			Logger.Printf("Too many spans: dropping spans from transaction with TraceID=%s SpanID=%s limit=%d",
+			DebugLogger.Printf("Too many spans: dropping spans from transaction with TraceID=%s SpanID=%s limit=%d",
 				root.TraceID, root.SpanID, maxSpans)
 		})
 		// TODO(tracing): mark the transaction event in some way to

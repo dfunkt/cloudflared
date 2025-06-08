@@ -51,14 +51,14 @@ func (dm *DatagramMuxerV2) mtu() int {
 }
 
 type DatagramMuxerV2 struct {
-	session          quic.Connection
+	session          *quic.Conn
 	logger           *zerolog.Logger
 	sessionDemuxChan chan<- *packet.Session
 	packetDemuxChan  chan Packet
 }
 
 func NewDatagramMuxerV2(
-	quicSession quic.Connection,
+	quicSession *quic.Conn,
 	log *zerolog.Logger,
 	sessionDemuxChan chan<- *packet.Session,
 ) *DatagramMuxerV2 {

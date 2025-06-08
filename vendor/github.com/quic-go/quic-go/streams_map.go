@@ -51,10 +51,10 @@ type streamsMap struct {
 	newFlowController func(protocol.StreamID) flowcontrol.StreamFlowController
 
 	mutex               sync.Mutex
-	outgoingBidiStreams *outgoingStreamsMap[streamI]
-	outgoingUniStreams  *outgoingStreamsMap[sendStreamI]
-	incomingBidiStreams *incomingStreamsMap[streamI]
-	incomingUniStreams  *incomingStreamsMap[receiveStreamI]
+	outgoingBidiStreams *outgoingStreamsMap[*Stream]
+	outgoingUniStreams  *outgoingStreamsMap[*SendStream]
+	incomingBidiStreams *incomingStreamsMap[*Stream]
+	incomingUniStreams  *incomingStreamsMap[*ReceiveStream]
 	reset               bool
 }
 
@@ -85,7 +85,7 @@ func newStreamsMap(
 func (m *streamsMap) initMaps() {
 	m.outgoingBidiStreams = newOutgoingStreamsMap(
 		protocol.StreamTypeBidi,
-		func(num protocol.StreamNum) streamI {
+		func(num protocol.StreamNum) *Stream {
 			id := num.StreamID(protocol.StreamTypeBidi, m.perspective)
 			return newStream(m.ctx, id, m.sender, m.newFlowController(id))
 		},
@@ -93,7 +93,7 @@ func (m *streamsMap) initMaps() {
 	)
 	m.incomingBidiStreams = newIncomingStreamsMap(
 		protocol.StreamTypeBidi,
-		func(num protocol.StreamNum) streamI {
+		func(num protocol.StreamNum) *Stream {
 			id := num.StreamID(protocol.StreamTypeBidi, m.perspective.Opposite())
 			return newStream(m.ctx, id, m.sender, m.newFlowController(id))
 		},
@@ -102,7 +102,7 @@ func (m *streamsMap) initMaps() {
 	)
 	m.outgoingUniStreams = newOutgoingStreamsMap(
 		protocol.StreamTypeUni,
-		func(num protocol.StreamNum) sendStreamI {
+		func(num protocol.StreamNum) *SendStream {
 			id := num.StreamID(protocol.StreamTypeUni, m.perspective)
 			return newSendStream(m.ctx, id, m.sender, m.newFlowController(id))
 		},
@@ -110,7 +110,7 @@ func (m *streamsMap) initMaps() {
 	)
 	m.incomingUniStreams = newIncomingStreamsMap(
 		protocol.StreamTypeUni,
-		func(num protocol.StreamNum) receiveStreamI {
+		func(num protocol.StreamNum) *ReceiveStream {
 			id := num.StreamID(protocol.StreamTypeUni, m.perspective.Opposite())
 			return newReceiveStream(id, m.sender, m.newFlowController(id))
 		},
@@ -119,7 +119,7 @@ func (m *streamsMap) initMaps() {
 	)
 }
 
-func (m *streamsMap) OpenStream() (Stream, error) {
+func (m *streamsMap) OpenStream() (*Stream, error) {
 	m.mutex.Lock()
 	reset := m.reset
 	mm := m.outgoingBidiStreams
@@ -131,7 +131,7 @@ func (m *streamsMap) OpenStream() (Stream, error) {
 	return str, convertStreamError(err, protocol.StreamTypeBidi, m.perspective)
 }
 
-func (m *streamsMap) OpenStreamSync(ctx context.Context) (Stream, error) {
+func (m *streamsMap) OpenStreamSync(ctx context.Context) (*Stream, error) {
 	m.mutex.Lock()
 	reset := m.reset
 	mm := m.outgoingBidiStreams
@@ -143,7 +143,7 @@ func (m *streamsMap) OpenStreamSync(ctx context.Context) (Stream, error) {
 	return str, convertStreamError(err, protocol.StreamTypeBidi, m.perspective)
 }
 
-func (m *streamsMap) OpenUniStream() (SendStream, error) {
+func (m *streamsMap) OpenUniStream() (*SendStream, error) {
 	m.mutex.Lock()
 	reset := m.reset
 	mm := m.outgoingUniStreams
@@ -155,7 +155,7 @@ func (m *streamsMap) OpenUniStream() (SendStream, error) {
 	return str, convertStreamError(err, protocol.StreamTypeBidi, m.perspective)
 }
 
-func (m *streamsMap) OpenUniStreamSync(ctx context.Context) (SendStream, error) {
+func (m *streamsMap) OpenUniStreamSync(ctx context.Context) (*SendStream, error) {
 	m.mutex.Lock()
 	reset := m.reset
 	mm := m.outgoingUniStreams
@@ -167,7 +167,7 @@ func (m *streamsMap) OpenUniStreamSync(ctx context.Context) (SendStream, error) 
 	return str, convertStreamError(err, protocol.StreamTypeUni, m.perspective)
 }
 
-func (m *streamsMap) AcceptStream(ctx context.Context) (Stream, error) {
+func (m *streamsMap) AcceptStream(ctx context.Context) (*Stream, error) {
 	m.mutex.Lock()
 	reset := m.reset
 	mm := m.incomingBidiStreams
@@ -179,7 +179,7 @@ func (m *streamsMap) AcceptStream(ctx context.Context) (Stream, error) {
 	return str, convertStreamError(err, protocol.StreamTypeBidi, m.perspective.Opposite())
 }
 
-func (m *streamsMap) AcceptUniStream(ctx context.Context) (ReceiveStream, error) {
+func (m *streamsMap) AcceptUniStream(ctx context.Context) (*ReceiveStream, error) {
 	m.mutex.Lock()
 	reset := m.reset
 	mm := m.incomingUniStreams
@@ -208,7 +208,7 @@ func (m *streamsMap) DeleteStream(id protocol.StreamID) error {
 	panic("")
 }
 
-func (m *streamsMap) GetOrOpenReceiveStream(id protocol.StreamID) (receiveStreamI, error) {
+func (m *streamsMap) GetOrOpenReceiveStream(id protocol.StreamID) (*ReceiveStream, error) {
 	str, err := m.getOrOpenReceiveStream(id)
 	if err != nil {
 		return nil, &qerr.TransportError{
@@ -219,7 +219,7 @@ func (m *streamsMap) GetOrOpenReceiveStream(id protocol.StreamID) (receiveStream
 	return str, nil
 }
 
-func (m *streamsMap) getOrOpenReceiveStream(id protocol.StreamID) (receiveStreamI, error) {
+func (m *streamsMap) getOrOpenReceiveStream(id protocol.StreamID) (*ReceiveStream, error) {
 	num := id.StreamNum()
 	switch id.Type() {
 	case protocol.StreamTypeUni:
@@ -230,19 +230,24 @@ func (m *streamsMap) getOrOpenReceiveStream(id protocol.StreamID) (receiveStream
 		str, err := m.incomingUniStreams.GetOrOpenStream(num)
 		return str, convertStreamError(err, protocol.StreamTypeUni, m.perspective)
 	case protocol.StreamTypeBidi:
-		var str receiveStreamI
-		var err error
 		if id.InitiatedBy() == m.perspective {
-			str, err = m.outgoingBidiStreams.GetStream(num)
+			str, err := m.outgoingBidiStreams.GetStream(num)
+			if str == nil && err == nil {
+				return nil, nil
+			}
+			return str.ReceiveStream, convertStreamError(err, protocol.StreamTypeBidi, id.InitiatedBy())
 		} else {
-			str, err = m.incomingBidiStreams.GetOrOpenStream(num)
+			str, err := m.incomingBidiStreams.GetOrOpenStream(num)
+			if str == nil && err == nil {
+				return nil, nil
+			}
+			return str.ReceiveStream, convertStreamError(err, protocol.StreamTypeBidi, id.InitiatedBy())
 		}
-		return str, convertStreamError(err, protocol.StreamTypeBidi, id.InitiatedBy())
 	}
 	panic("")
 }
 
-func (m *streamsMap) GetOrOpenSendStream(id protocol.StreamID) (sendStreamI, error) {
+func (m *streamsMap) GetOrOpenSendStream(id protocol.StreamID) (*SendStream, error) {
 	str, err := m.getOrOpenSendStream(id)
 	if err != nil {
 		return nil, &qerr.TransportError{
@@ -253,25 +258,39 @@ func (m *streamsMap) GetOrOpenSendStream(id protocol.StreamID) (sendStreamI, err
 	return str, nil
 }
 
-func (m *streamsMap) getOrOpenSendStream(id protocol.StreamID) (sendStreamI, error) {
+func (m *streamsMap) getOrOpenSendStream(id protocol.StreamID) (*SendStream, error) {
 	num := id.StreamNum()
 	switch id.Type() {
 	case protocol.StreamTypeUni:
 		if id.InitiatedBy() == m.perspective {
 			str, err := m.outgoingUniStreams.GetStream(num)
+			if str == nil && err == nil {
+				return nil, nil
+			}
 			return str, convertStreamError(err, protocol.StreamTypeUni, m.perspective)
 		}
 		// an incoming unidirectional stream is a receive stream, not a send stream
 		return nil, fmt.Errorf("peer attempted to open send stream %d", id)
 	case protocol.StreamTypeBidi:
-		var str sendStreamI
-		var err error
 		if id.InitiatedBy() == m.perspective {
-			str, err = m.outgoingBidiStreams.GetStream(num)
+			str, err := m.outgoingBidiStreams.GetStream(num)
+			if str == nil && err == nil {
+				return nil, nil
+			}
+			if err != nil {
+				return nil, convertStreamError(err, protocol.StreamTypeBidi, id.InitiatedBy())
+			}
+			return str.SendStream, nil
 		} else {
-			str, err = m.incomingBidiStreams.GetOrOpenStream(num)
+			str, err := m.incomingBidiStreams.GetOrOpenStream(num)
+			if str == nil && err == nil {
+				return nil, nil
+			}
+			if err != nil {
+				return nil, convertStreamError(err, protocol.StreamTypeBidi, id.InitiatedBy())
+			}
+			return str.SendStream, nil
 		}
-		return str, convertStreamError(err, protocol.StreamTypeBidi, id.InitiatedBy())
 	}
 	panic("")
 }

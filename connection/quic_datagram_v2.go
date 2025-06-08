@@ -207,7 +207,7 @@ func (q *datagramV2Connection) closeUDPSession(ctx context.Context, sessionID uu
 		return
 	}
 
-	stream := cfdquic.NewSafeStreamCloser(quicStream, q.streamWriteTimeout, q.logger)
+	stream := cfdquic.NewSafeStreamCloser(*quicStream, q.streamWriteTimeout, q.logger)
 	defer stream.Close()
 	rpcClientStream, err := rpcquic.NewSessionClient(ctx, stream, q.rpcTimeout)
 	if err != nil {

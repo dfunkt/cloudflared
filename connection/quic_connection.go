@@ -41,7 +41,7 @@ const (
 
 // quicConnection represents the type that facilitates Proxying via QUIC streams.
 type quicConnection struct {
-	conn                 quic.Connection
+	conn                 *quic.Conn
 	logger               *zerolog.Logger
 	orchestrator         Orchestrator
 	datagramHandler      DatagramSessionHandler
@@ -57,7 +57,7 @@ type quicConnection struct {
 // NewTunnelConnection takes a [quic.Connection] to wrap it for use with cloudflared application logic.
 func NewTunnelConnection(
 	ctx context.Context,
-	conn quic.Connection,
+	conn *quic.Conn,
 	connIndex uint8,
 	orchestrator Orchestrator,
 	datagramSessionHandler DatagramSessionHandler,
@@ -105,7 +105,7 @@ func (q *quicConnection) Serve(ctx context.Context) error {
 		// err is equal to nil if we exit due to unregistration. If that happens we want to wait the full
 		// amount of the grace period, allowing requests to finish before we cancel the context, which will
 		// make cloudflared exit.
-		if err := q.serveControlStream(ctx, controlStream); err == nil {
+		if err := q.serveControlStream(ctx, *controlStream); err == nil {
 			if q.gracePeriod > 0 {
 				// In Go1.23 this can be removed and replaced with time.Ticker
 				// see https://pkg.go.dev/time#Tick
@@ -144,7 +144,7 @@ func (q *quicConnection) Serve(ctx context.Context) error {
 
 // serveControlStream will serve the RPC; blocking until the control plane is done.
 func (q *quicConnection) serveControlStream(ctx context.Context, controlStream quic.Stream) error {
-	return q.controlStreamHandler.ServeControlStream(ctx, controlStream, q.connOptions.ConnectionOptions(), q.orchestrator)
+	return q.controlStreamHandler.ServeControlStream(ctx, &controlStream, q.connOptions.ConnectionOptions(), q.orchestrator)
 }
 
 // Close the connection with no errors specified.
@@ -162,7 +162,7 @@ func (q *quicConnection) acceptStream(ctx context.Context) error {
 			}
 			return fmt.Errorf("failed to accept QUIC stream: %w", err)
 		}
-		go q.runStream(quicStream)
+		go q.runStream(*quicStream)
 	}
 }
 

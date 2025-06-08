@@ -22,7 +22,7 @@ var (
 )
 
 type datagramV3Connection struct {
-	conn  quic.Connection
+	conn  *quic.Conn
 	index uint8
 	// datagramMuxer mux/demux datagrams from quic connection
 	datagramMuxer cfdquic.DatagramConn
@@ -31,7 +31,7 @@ type datagramV3Connection struct {
 }
 
 func NewDatagramV3Connection(ctx context.Context,
-	conn quic.Connection,
+	conn *quic.Conn,
 	sessionManager cfdquic.SessionManager,
 	icmpRouter ingress.ICMPRouter,
 	index uint8,

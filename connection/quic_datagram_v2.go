@@ -47,7 +47,7 @@ type DatagramSessionHandler interface {
 }
 
 type datagramV2Connection struct {
-	conn  quic.Connection
+	conn  *quic.Conn
 	index uint8
 
 	// sessionManager tracks active sessions. It receives datagrams from quic connection via datagramMuxer
@@ -69,7 +69,7 @@ type datagramV2Connection struct {
 }
 
 func NewDatagramV2Connection(ctx context.Context,
-	conn quic.Connection,
+	conn *quic.Conn,
 	originDialer ingress.OriginUDPDialer,
 	icmpRouter ingress.ICMPRouter,
 	index uint8,
@@ -228,7 +228,7 @@ func (q *datagramV2Connection) closeUDPSession(ctx context.Context, sessionID uu
 		return
 	}
 
-	stream := cfdquic.NewSafeStreamCloser(quicStream, q.streamWriteTimeout, q.logger)
+	stream := cfdquic.NewSafeStreamCloser(*quicStream, q.streamWriteTimeout, q.logger)
 	defer stream.Close()
 	rpcClientStream, err := rpcquic.NewSessionClient(ctx, stream, q.rpcTimeout)
 	if err != nil {

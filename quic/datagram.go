@@ -25,12 +25,12 @@ type BaseDatagramMuxer interface {
 }
 
 type DatagramMuxer struct {
-	session   quic.Connection
+	session   *quic.Conn
 	logger    *zerolog.Logger
 	demuxChan chan<- *packet.Session
 }
 
-func NewDatagramMuxer(quicSession quic.Connection, log *zerolog.Logger, demuxChan chan<- *packet.Session) *DatagramMuxer {
+func NewDatagramMuxer(quicSession *quic.Conn, log *zerolog.Logger, demuxChan chan<- *packet.Session) *DatagramMuxer {
 	logger := log.With().Uint8("datagramVersion", 1).Logger()
 	return &DatagramMuxer{
 		session:   quicSession,

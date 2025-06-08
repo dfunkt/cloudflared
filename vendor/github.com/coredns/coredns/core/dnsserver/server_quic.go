@@ -150,7 +150,7 @@ func (s *ServerQUIC) serveQUICConnection(conn quic.Connection) {
 		go func(st quic.Stream, cn quic.Connection) {
 			defer func() { <-s.streamProcessPool }() // Release worker slot
 			s.serveQUICStream(st, cn)
-		}(stream, conn)
+		}(*stream, conn)
 	}
 }
 

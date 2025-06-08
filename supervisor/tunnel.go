@@ -602,7 +602,7 @@ func (e *EdgeTunnelServer) serveQUIC(
 	if connOptions.FeatureSnapshot.DatagramVersion == features.DatagramV3 {
 		datagramSessionManager = connection.NewDatagramV3Connection(
 			ctx,
-			conn,
+			conn.UnderlyingConn(),
 			e.sessionManager,
 			e.config.ICMPRouterServer,
 			connIndex,
@@ -612,7 +612,7 @@ func (e *EdgeTunnelServer) serveQUIC(
 	} else {
 		datagramSessionManager = connection.NewDatagramV2Connection(
 			ctx,
-			conn,
+			conn.UnderlyingConn(),
 			e.config.ICMPRouterServer,
 			connIndex,
 			e.config.RPCTimeout,
@@ -625,7 +625,7 @@ func (e *EdgeTunnelServer) serveQUIC(
 	// Wrap the [quic.Connection] as a TunnelConnection
 	tunnelConn, err := connection.NewTunnelConnection(
 		ctx,
-		conn,
+		conn.UnderlyingConn(),
 		connIndex,
 		e.orchestrator,
 		datagramSessionManager,

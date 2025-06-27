@@ -2,7 +2,7 @@ name: Build Docker Image
 
 on:
   push:
-    branches: master
+    branches: main 
 
 env:
   REGISTRY: ghcr.io
@@ -120,3 +120,16 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-${{ needs.build-and-push.outputs.source-version }}-${{ matrix.platforms }}
           path: /tmp/${{ github.event.repository.name }}/${{ matrix.platforms }}/usr/local/bin/
+
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    needs: build-and-push
+    steps:
+      - name: Invoke deployment hook
+        uses: distributhor/workflow-webhook@v3
+        with:
+          webhook_url: ${{ secrets.WEBHOOK_URL }}
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}

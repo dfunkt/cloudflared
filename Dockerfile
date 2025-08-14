@@ -22,7 +22,7 @@ RUN case "${TARGETARCH}${TARGETVARIANT}" in \
          amd64v*) export GOAMD64="${TARGETVARIANT}" ;; \
     esac && \
     # compile cloudflared
-    GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
+    GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" GOEXPERIMENT=greenteagc make cloudflared
 
 # use scratch as base
 FROM scratch

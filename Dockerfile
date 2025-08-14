@@ -1,7 +1,7 @@
 # importing xx for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 # use a builder image for building cloudflare
-FROM --platform=$BUILDPLATFORM golang:1.24.6 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.0 AS builder
 COPY --from=xx / /
 ENV GO111MODULE=on \
   CGO_ENABLED=0 \

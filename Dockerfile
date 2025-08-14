@@ -25,7 +25,7 @@ RUN if [[ "${TARGETARCH}${TARGETVARIANT}" == amd64v* ]]; then \
       export GOAMD64="${TARGETVARIANT}"; \
     fi && \
     # compile cloudflared
-    GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" make cloudflared
+    GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" GOEXPERIMENT=greenteagc make cloudflared
 
 # use scratch as base
 FROM scratch

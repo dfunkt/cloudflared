@@ -199,7 +199,7 @@ func (s *ServerQUIC) serveQUICStream(stream *quic.Stream, conn *quic.Conn) {
 	w := &DoQWriter{
 		localAddr:  conn.LocalAddr(),
 		remoteAddr: conn.RemoteAddr(),
-		stream:     *stream,
+		stream:     stream,
 		Msg:        req,
 	}
 

@@ -1,7 +1,7 @@
 # importing xx for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 # use a builder image for building cloudflare
-FROM --platform=$BUILDPLATFORM golang:1.25.1 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.2 AS builder
 COPY --from=xx / /
 ENV CGO_ENABLED=0 \
   # the CONTAINER_BUILD envvar is used set github.com/cloudflare/cloudflared/metrics.Runtime=virtual

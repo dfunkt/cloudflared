@@ -76,9 +76,9 @@ jobs:
         with:
           context: .
           platforms: ${{ env.BUILD_PLATFORMS }}
-          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=registry,compression=zstd,force-compression=true
 
       - name: Attest container image
         uses: actions/attest-build-provenance@v3

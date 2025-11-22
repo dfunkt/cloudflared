@@ -84,7 +84,7 @@ func NewServerQUIC(addr string, group []*Config) (*ServerQUIC, error) {
 	}
 
 	var quicConfig = &quic.Config{
-		MaxIdleTimeout:        s.idleTimeout,
+		MaxIdleTimeout:        s.IdleTimeout,
 		MaxIncomingStreams:    int64(maxStreams),
 		MaxIncomingUniStreams: int64(maxStreams),
 		// Enable 0-RTT by default for all connections on the server-side.
@@ -199,7 +199,7 @@ func (s *ServerQUIC) serveQUICStream(stream *quic.Stream, conn *quic.Conn) {
 	w := &DoQWriter{
 		localAddr:  conn.LocalAddr(),
 		remoteAddr: conn.RemoteAddr(),
-		stream:     *stream,
+		stream:     stream,
 		Msg:        req,
 	}
 

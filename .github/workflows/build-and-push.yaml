@@ -6,7 +6,11 @@ on:
     branches: main
 
 env:
-  REGISTRY_PACKAGE: ghcr.io/dfunkt/cloudflared
+  REGISTRY_PACKAGE: ghcr.io/${{ github.repository }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build-and-push:
@@ -30,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -44,7 +48,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ env.REGISTRY_PACKAGE }}
 
@@ -61,9 +65,9 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           tags: |
             ${{ env.REGISTRY_PACKAGE }}
-            localhost:5000/dfunkt/cloudflared
+            localhost:5000/${{ github.repository }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true,compression=zstd,force-compression=true
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true,compression=zstd
 
       - name: Export digest
         env:
@@ -86,15 +90,13 @@ jobs:
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
           MATRIX_ARCH: ${{ matrix.arch }}
+          REPOSITORY_NAME: ${{ github.repository }}
         run: |
-          # Create output directory
-          mkdir -p ./binaries
-
           # Create a temporary container and copy binaries
-          CONTAINER_ID=$(docker create localhost:5000/dfunkt/cloudflared:latest@${IMAGE_DIGEST})
+          CONTAINER_ID=$(docker create localhost:5000/${REPOSITORY_NAME}:latest@${IMAGE_DIGEST})
 
           # Copy your binary (adjust the path to match your binary location in the container)
-          docker cp $CONTAINER_ID:/usr/local/bin/cloudflared ./binaries/cloudflared-${MATRIX_ARCH}
+          docker cp $CONTAINER_ID:/usr/local/bin/cloudflared cloudflared-${MATRIX_ARCH}
 
           # Clean up
           docker rm $CONTAINER_ID
@@ -102,17 +104,17 @@ jobs:
       - name: Attest binaries
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
-          subject-path: ./binaries/${{ github.event.repository.name }}-${{ matrix.arch }}
+          subject-path: cloudflared-${{ matrix.arch }}
 
       - name: Get short SHA for artefacts
         id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
       - name: Upload binaries as artifacts
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: ${{ github.event.repository.name }}-${{ steps.vars.outputs.sha_short }}-linux-${{ matrix.arch }}
-          path: ./binaries/*-${{ matrix.arch }}
+          name: cloudflared-${{ env.SHORT_SHA }}-linux-${{ matrix.arch }}
+          path: cloudflared-${{ matrix.arch }}
 
   merge-manifests:
     runs-on: ubuntu-latest
@@ -143,7 +145,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ env.REGISTRY_PACKAGE }}
           tags: type=raw,value=latest
@@ -170,7 +172,7 @@ jobs:
           set -e
 
           # Extract digest SHA for subsequent steps
-          GET_DIGEST_SHA="$(echo "$OUTPUT" | grep -oE 'sha256:[a-f0-9]{64}' | head -1)"
+          GET_DIGEST_SHA="$(echo "$OUTPUT" | grep -oE 'sha256:[a-f0-9]{64}' | tail -1)"
           echo "DIGEST_SHA=${GET_DIGEST_SHA}" | tee -a "${GITHUB_ENV}"
 
       - name: Attest container image
@@ -185,14 +187,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     needs: merge-manifests
-
-    env:
-      HAVE_WEBHOOK_ENABLED: ${{ secrets.WEBHOOK_URL != '' }}
+    if: ${{ vars.WEBHOOK_ENABLED == 'true' }}
 
     steps:
       - name: Invoke deployment hook
         uses: distributhor/workflow-webhook@2381f0e9c7b6bf061fb1405bd0804b8706116369 # v3.0.8
-        if: ${{ env.HAVE_WEBHOOK_ENABLED == 'true' }}
         with:
           webhook_url: ${{ secrets.WEBHOOK_URL }}
           webhook_secret: ${{ secrets.WEBHOOK_SECRET }}

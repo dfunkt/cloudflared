@@ -157,7 +157,7 @@ jobs:
         run: |
           echo "Creating manifest"
           if ! OUTPUT=$(docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-                          $(printf "${REGISTRY_PACKAGE}@sha256:%s " *) 2>&1)
+                          $(printf "${REGISTRY_PACKAGE}@sha256:%s " *) 2>&1); then
             echo "Manifest creation failed"
             echo "${OUTPUT}"
             exit 1

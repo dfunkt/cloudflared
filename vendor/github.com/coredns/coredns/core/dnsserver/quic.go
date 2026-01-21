@@ -53,13 +53,14 @@ func (w *DoQWriter) Close() error {
 // AddPrefix adds a 2-byte prefix with the DNS message length.
 func AddPrefix(b []byte) (m []byte) {
 	m = make([]byte, 2+len(b))
-	binary.BigEndian.PutUint16(m, uint16(len(b)))
+	binary.BigEndian.PutUint16(m, uint16(len(b))) // #nosec G115 -- DNS message length fits in uint16
 	copy(m[2:], b)
 
 	return m
 }
 
 // These methods implement the dns.ResponseWriter interface from Go DNS.
+
 func (w *DoQWriter) TsigStatus() error     { return nil }
 func (w *DoQWriter) TsigTimersOnly(b bool) {}
 func (w *DoQWriter) Hijack()               {}

@@ -103,6 +103,14 @@ func NewServerQUIC(addr string, group []*Config) (*ServerQUIC, error) {
 // ServePacket implements caddy.UDPServer interface.
 func (s *ServerQUIC) ServePacket(p net.PacketConn) error {
 	s.m.Lock()
+	if s.quicListener == nil {
+		listener, err := quic.Listen(p, s.tlsConfig, s.quicConfig)
+		if err != nil {
+			s.m.Unlock()
+			return err
+		}
+		s.quicListener = listener
+	}
 	s.listenAddr = s.quicListener.Addr()
 	s.m.Unlock()
 
@@ -148,12 +156,29 @@ func (s *ServerQUIC) serveQUICConnection(conn *quic.Conn) {
 			return
 		}
 
-		// Use a bounded worker pool
-		s.streamProcessPool <- struct{}{} // Acquire a worker slot, may block
-		go func(st *quic.Stream, cn *quic.Conn) {
-			defer func() { <-s.streamProcessPool }() // Release worker slot
-			s.serveQUICStream(st, cn)
-		}(stream, conn)
+		// Use a bounded worker pool with context cancellation
+		select {
+		case s.streamProcessPool <- struct{}{}:
+			// Got worker slot immediately
+			go func(st *quic.Stream, cn *quic.Conn) {
+				defer func() { <-s.streamProcessPool }() // Release worker slot
+				s.serveQUICStream(st, cn)
+			}(stream, conn)
+		default:
+			// Worker pool full, check for context cancellation
+			go func(st *quic.Stream, cn *quic.Conn) {
+				select {
+				case s.streamProcessPool <- struct{}{}:
+					// Got worker slot after waiting
+					defer func() { <-s.streamProcessPool }() // Release worker slot
+					s.serveQUICStream(st, cn)
+				case <-conn.Context().Done():
+					// Connection context was cancelled while waiting
+					st.Close()
+					return
+				}
+			}(stream, conn)
+		}
 	}
 }
 
@@ -338,7 +363,8 @@ func readDOQMessage(r io.Reader) ([]byte, error) {
 	// A client or server receives a STREAM FIN before receiving all the bytes
 	// for a message indicated in the 2-octet length field.
 	// See https://www.rfc-editor.org/rfc/rfc9250#section-4.3.3-2.2
-	if size != uint16(len(buf)) {
+	//nolint:gosec
+	if size != uint16(len(buf)) { // #nosec G115 -- buf length fits in uint16
 		return nil, fmt.Errorf("message size does not match 2-byte prefix")
 	}
 

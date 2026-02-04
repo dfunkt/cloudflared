@@ -1,5 +1,5 @@
 # use a builder image for building cloudflare
-FROM golang:1.26rc2 AS builder
+FROM golang:1.26rc3 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION

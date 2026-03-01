@@ -25,7 +25,7 @@ jobs:
           echo "VERSION=$(git describe --tags --always --match "[0-9][0-9][0-9][0-9].*.*")" | tee -a "${GITHUB_OUTPUT}"
 
   build:
-    uses: docker/github-builder/.github/workflows/build.yml@c767551a26459c30e1f683df73a12fdb918f7068 # v1.0.0
+    uses: docker/github-builder/.github/workflows/build.yml@abff7868c866c54704b6afa9ad5871948ca97334 # v1.1.0
     needs: determine-version
     permissions:
       contents: read # to fetch the repository content

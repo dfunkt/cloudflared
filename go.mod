@@ -1,6 +1,6 @@
 module github.com/cloudflare/cloudflared
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/cloudflare/backoff v0.0.0-20240920015135-e46b80a3a7d0

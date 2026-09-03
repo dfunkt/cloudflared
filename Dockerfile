@@ -5,7 +5,6 @@ ARG TARGETARCH
 ARG VERSION
 ENV GO111MODULE=on \
   CGO_ENABLED=0 \
-  GOPROXY=https://athens.cfdata.org|https://proxy.golang.org|direct \
   TARGET_GOOS=${TARGETOS} \
   TARGET_GOARCH=${TARGETARCH} \
   # the CONTAINER_BUILD envvar is used set github.com/cloudflare/cloudflared/metrics.Runtime=virtual

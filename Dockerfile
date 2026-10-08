@@ -3,10 +3,8 @@ FROM golang:1.27.1 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION
-ARG GOPROXY=https://athens.cfdata.org|https://proxy.golang.org|direct
 ENV GO111MODULE=on \
   CGO_ENABLED=0 \
-  GOPROXY=${GOPROXY} \
   TARGET_GOOS=${TARGETOS} \
   TARGET_GOARCH=${TARGETARCH} \
   # the CONTAINER_BUILD envvar is used set github.com/cloudflare/cloudflared/metrics.Runtime=virtual
